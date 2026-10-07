@@ -21,7 +21,7 @@ from pydantic import BaseModel, Field
 MODEL = "claude-opus-5-5"
 MAX_POINTS = 40
 # Points taken off per prompt. Edit these to make grading stricter or more lenient.
-DEDUCTIONS = {"thoughtful": 0, "thin": 1, "missing": 3}
+DEDUCTIONS = {"thoughtful": 0, "thin": 1, "missing": 2}
 RUBRIC = Path(__file__).with_name("rubric.md")
 CRITERIA = [
     ("perception", "Change in perception"),
@@ -123,15 +123,30 @@ def main() -> None:
     rebuild_csv(out_dir)
 
 
+def read_feedback(md: Path) -> dict:
+    """Parse a feedback file written by write_feedback()."""
+    text = md.read_text()
+    labels = {label: key for key, label in CRITERIA}
+    statuses = {labels[label]: status for label, status in
+                re.findall(r"^## (.*): (thoughtful|thin|missing) \(", text, re.M)}
+    section = lambda title: (re.search(rf"^## {title}\n\n(.*?)(?=\n## |\Z)", text, re.M | re.S) or [None, ""])[1].strip()
+    return {
+        "name": re.match(r"# (.*) — ", text).group(1),
+        "total": int(re.match(r"# .* — (\d+)/", text).group(1)),
+        "minutes": float(re.search(r"\(([\d.]+) min\)", text).group(1)),
+        "statuses": statuses,
+        "comment": section("Overall"),
+        "flags": [line[2:] for line in section("Check").splitlines() if line.startswith("- ")],
+    }
+
+
 def rebuild_csv(out_dir: Path) -> None:
     """Rebuild grades.csv from every feedback file so it always reflects the full set."""
     rows = []
     for md in sorted(out_dir.glob("*.md")):
-        text = md.read_text()
-        name, total = re.match(r"# (.*) — (\d+)/\d+", text).groups()
-        scores = re.findall(r"^## .*: (thoughtful|thin|missing) \(", text, re.M)
-        minutes = re.search(r"\(([\d.]+) min\)", text).group(1)
-        rows.append([md.stem, name, minutes, *scores, total, "yes" if "## Check" in text else ""])
+        fb = read_feedback(md)
+        rows.append([md.stem, fb["name"], fb["minutes"], *[fb["statuses"][k] for k, _ in CRITERIA],
+                     fb["total"], "yes" if fb["flags"] else ""])
     with open(out_dir / "grades.csv", "w", newline="") as f:
         w = csv.writer(f)
         w.writerow(["video", "student", "minutes", *[label for _, label in CRITERIA], f"total_{MAX_POINTS}", "needs_check"])

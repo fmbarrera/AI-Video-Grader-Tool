@@ -8,6 +8,13 @@ Videos/
 transcripts/
 grades/
 
+# Gradebook / roster spreadsheet (names, submission dates, grades)
+*.xlsx
+*.xlsm
+*.xls
+*.csv
+~$*
+
 # Environment
 .venv/
 __pycache__/

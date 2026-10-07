@@ -52,11 +52,29 @@ Give each of the four prompts one status:
   speakers, hands-on venture research) are all **thoughtful**. Next phase is
   **thin**: they describe the venture but never clearly state what they'll
   prioritize next.
+- **Student C** (Priya gave 38; the rubric gives 39):
+  perception (ideas are cheap, the problem defines the company), readings
+  (Applegate, named and explained), and experiential (his own interviews,
+  five whys, Lumio speakers) are **thoughtful**. Next phase is **thin**: he
+  wants to move from interviews to building, but says nothing about how
+  he'll find and validate the problem or test whether it's viable.
+- **Student D** (Priya gave 38; the rubric gives 37): perception and
+  experiential (interviews, venture spotlights, specific Lumio/Y Combinator
+  lessons) are **thoughtful**. Readings are **thin**: "a lot of readings
+  we've done" with no reading or takeaway named. Next phase is **missing**:
+  the video ends without saying what he'll prioritize next.
 
 ## Notes for the grader
 
 - Transcripts are machine-generated; ignore filler words, mis-transcriptions,
   and odd names (e.g., "Milk Sheik" = milkshake, a guest company's name may be misspelled).
+- Whisper sometimes invents text when a video ends in silence (a phrase
+  repeated over and over, or "you. you. you."). Ignore it when judging, and
+  add a flag so the TA can check the end of the video.
+- Delivery (filler words, volume, reading from notes) is not scored. Mention
+  it in the comment as coaching if it stands out.
 - Quote short evidence from the transcript for every judgment.
+- Write the overall comment to the student: praise first, then one or two
+  specific things to improve.
 - Target length is 3–5 minutes. Flag videos outside that range for the TA,
   but don't let length affect the statuses.
