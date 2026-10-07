@@ -1,0 +1,14 @@
+# Student data — never commit
+Videos/
+*.mov
+*.mp4
+*.m4v
+*.m4a
+*.wav
+transcripts/
+grades/
+
+# Environment
+.venv/
+__pycache__/
+.DS_Store
