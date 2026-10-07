@@ -63,7 +63,8 @@ Run `.venv/bin/python late.py` to see examples. Change `LATE_CAP_PCT` or
 #    (as Canvas does). Transcribe them; this runs locally, audio never leaves the Mac.
 .venv/bin/python transcribe.py Videos
 
-# 2. Judge the transcripts with Claude (needs an Anthropic API key; see SETUP.md)
+# 2. Judge the transcripts with Claude: with an API key, or by pasting the
+#    prompt from SETUP.md into Claude Code (no API key needed)
 export ANTHROPIC_API_KEY=sk-ant-...
 .venv/bin/python grade.py
 
