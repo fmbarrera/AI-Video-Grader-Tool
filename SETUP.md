@@ -5,6 +5,7 @@ A step-by-step guide for a TA running this for the first time, on **Windows**
 download of about 1.5 GB for the speech-to-text model.
 
 - [What you need](#what-you-need)
+- [Which API key you need](#which-api-key-you-need)
 - [Windows setup](#windows-setup)
 - [Mac setup](#mac-setup)
 - [Grading a batch](#grading-a-batch)
@@ -18,13 +19,41 @@ download of about 1.5 GB for the speech-to-text model.
   roughly 1–3 minutes per video.
 - **Access to this GitHub repo.** It's private, so the owner has to add you as
   a collaborator (Settings → Collaborators). Accept the email invite.
-- **An Anthropic API key** for the grading step. Ask the repo owner for one or
-  create your own at https://console.anthropic.com (API Keys → Create Key).
-  Grading costs a few cents per video. Transcription is free and runs on your
-  own computer, so student audio is never uploaded.
+- **An Anthropic API key** for the grading step. See
+  [Which API key you need](#which-api-key-you-need) below. Transcription needs
+  no key: it's free and runs on your own computer, so student audio is never
+  uploaded.
 - **The student files, sent to you separately.** The videos and the gradebook
   spreadsheet are deliberately *not* in GitHub because they contain student
   names and grades. Get them from Canvas or from the other TA.
+
+### Which API key you need
+
+The grading step (`grade.py`) sends each **transcript text** (never the
+video or audio) to Claude through the **Anthropic API**. You need:
+
+- **An Anthropic API key**: a long string starting with `sk-ant-api03-`.
+  Create one at **https://console.anthropic.com** → sign in → **API Keys** →
+  **Create Key**. It's shown only once, so copy it right away.
+- **Billing set up on that Console account.** API usage is prepaid: go to
+  **Settings → Billing** and add credits ($5 is plenty to start).
+
+Things that are **not** what you need:
+
+- **A Claude.ai subscription** (Free, Pro, Max, Team). That's the chat app, and
+  it doesn't include API access or work as an API key.
+- **An OpenAI, Google, or Hugging Face key.** The speech model downloads
+  without any key.
+
+**Cost:** the script uses Claude Opus 5.5 (`claude-opus-5-5`). Expect about
+**5 cents per video**, so roughly $3–4 to grade a class of 60–70 students.
+You can see exact usage under **Usage** in the Console.
+
+**Sharing:** the simplest setup is for each TA to create their own key. If the
+course has one shared Console account, the owner can invite you under
+**Settings → Members**, or create a separate key for you so it can be turned
+off on its own. Never send a key by email or chat, and never put it in a file
+inside this folder.
 
 ## Windows setup
 
