@@ -1,4 +1,8 @@
-mlx-whisper
+# Speech-to-text: mlx-whisper on Apple Silicon Macs, faster-whisper everywhere else (Windows, Intel Macs, Linux)
+mlx-whisper; sys_platform == "darwin" and platform_machine == "arm64"
+faster-whisper>=1.1; sys_platform != "darwin" or platform_machine != "arm64"
 anthropic>=1.11
 pydantic>=2
 openpyxl
+# Time zone data for the late policy (Windows doesn't include it)
+tzdata

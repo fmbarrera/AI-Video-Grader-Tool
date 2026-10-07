@@ -55,7 +55,7 @@ class Grade(BaseModel):
 
 
 def read_transcript(path: Path) -> tuple[float, str]:
-    raw = path.read_text()
+    raw = path.read_text(encoding="utf-8")
     m = re.search(r"# Duration: ([\d.]+) min", raw)
     return (float(m.group(1)) if m else 0.0), raw
 
@@ -90,7 +90,7 @@ def write_feedback(path: Path, source: str, minutes: float, g: Grade) -> int:
              if g.possible_ai_script else []) + g.flags
     if flags:
         lines += ["## Check", ""] + [f"- {f}" for f in flags] + [""]
-    path.write_text("\n".join(lines))
+    path.write_text("\n".join(lines), encoding="utf-8")
     return total
 
 
@@ -110,7 +110,7 @@ def main() -> None:
     system = (
         "You are helping a teaching assistant grade student video reflections for an "
         "undergraduate entrepreneurship course. Apply this rubric fairly and consistently; "
-        "be specific and quote the student.\n\n" + RUBRIC.read_text()
+        "be specific and quote the student.\n\n" + RUBRIC.read_text(encoding="utf-8")
     )
     client = anthropic.Anthropic()
 
@@ -134,7 +134,7 @@ def main() -> None:
 
 def read_feedback(md: Path) -> dict:
     """Parse a feedback file written by write_feedback()."""
-    text = md.read_text()
+    text = md.read_text(encoding="utf-8")
     labels = {label: key for key, label in CRITERIA}
     statuses = {labels[label]: status for label, status in
                 re.findall(r"^## (.*): (thoughtful|thin|missing) \(", text, re.M)}
@@ -158,7 +158,7 @@ def rebuild_csv(out_dir: Path) -> None:
         fb = read_feedback(md)
         rows.append([md.stem, fb["name"], fb["minutes"], *[fb["statuses"][k] for k, _ in CRITERIA],
                      fb["total"], "yes" if fb["flags"] else ""])
-    with open(out_dir / "grades.csv", "w", newline="") as f:
+    with open(out_dir / "grades.csv", "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(["video", "student", "minutes", *[label for _, label in CRITERIA], f"total_{MAX_POINTS}", "needs_check"])
         w.writerows(rows)

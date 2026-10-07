@@ -1,30 +1,81 @@
 # Setting up the grader on your own computer
 
-A step-by-step guide for a TA running this for the first time. It takes about
-15 minutes, plus a one-time download of about 1.5 GB for the speech-to-text
-model.
+A step-by-step guide for a TA running this for the first time, on **Windows**
+(e.g. a Dell) or a **Mac**. Setup takes about 15 minutes, plus a one-time
+download of about 1.5 GB for the speech-to-text model.
+
+- [What you need](#what-you-need)
+- [Windows setup](#windows-setup)
+- [Mac setup](#mac-setup)
+- [Grading a batch](#grading-a-batch)
+- [Getting updates](#getting-updates)
+- [If something goes wrong](#if-something-goes-wrong)
 
 ## What you need
 
-- **A Mac with Apple Silicon** (M1, M2, M3, or newer). To check: Apple menu →
-  About This Mac → "Chip" should say Apple M-something. The transcription step
-  uses a version of Whisper that only runs on these Macs. On Windows or an
-  Intel Mac, ask the repo owner first.
+- **A Windows 10/11 PC or a Mac.** Both work. Transcription is fastest on
+  Apple Silicon Macs (about 15 seconds per video). On a Windows laptop expect
+  roughly 1–3 minutes per video.
 - **Access to this GitHub repo.** It's private, so the owner has to add you as
   a collaborator (Settings → Collaborators). Accept the email invite.
 - **An Anthropic API key** for the grading step. Ask the repo owner for one or
   create your own at https://console.anthropic.com (API Keys → Create Key).
-  Grading costs a few cents per video. Transcription is free and runs on your Mac.
+  Grading costs a few cents per video. Transcription is free and runs on your
+  own computer, so student audio is never uploaded.
 - **The student files, sent to you separately.** The videos and the gradebook
   spreadsheet are deliberately *not* in GitHub because they contain student
   names and grades. Get them from Canvas or from the other TA.
 
-## 1. Install the tools (one time)
+## Windows setup
+
+Open **PowerShell**: press the Windows key, type "PowerShell", press Enter.
+Run each command below, one at a time.
+
+**1. Install the tools.** `winget` comes with Windows 10/11. Accept any
+prompts.
+
+```powershell
+winget install --id Gyan.FFmpeg -e
+winget install --id Python.Python.3.12 -e
+winget install --id Git.Git -e
+winget install --id GitHub.cli -e
+```
+
+**Close PowerShell and open a new one** so it picks up the new programs.
+
+**2. Download the code.**
+
+```powershell
+gh auth login        # choose GitHub.com → HTTPS → "Login with a web browser"
+cd $HOME\Documents
+gh repo clone fmbarrera/Video-Transcript-Generator
+cd Video-Transcript-Generator
+```
+
+**3. Set up Python.**
+
+```powershell
+py -3.12 -m venv .venv
+.venv\Scripts\python -m pip install -r requirements.txt
+```
+
+**4. Save your API key.** Keep it private. Don't put it in any file in this
+folder, and don't share it in chat.
+
+```powershell
+setx ANTHROPIC_API_KEY "sk-ant-PASTE-YOUR-KEY-HERE"
+```
+
+Close PowerShell and open a new one so the key takes effect. Then go to
+[Grading a batch](#grading-a-batch). On Windows, the commands there start with
+`.venv\Scripts\python` instead of `.venv/bin/python`.
+
+## Mac setup
 
 Open **Terminal** (press ⌘-Space, type "Terminal", press Enter) and run these
 one at a time.
 
-Install Homebrew, the Mac package manager, if you don't have it. It asks for
+**1. Install the tools.** Install Homebrew if you don't have it. It asks for
 your Mac password; nothing appears as you type, which is normal.
 
 ```bash
@@ -32,15 +83,13 @@ your Mac password; nothing appears as you type, which is normal.
 ```
 
 When it finishes, it prints two or three "Next steps" commands that start with
-`echo` and `eval`. Copy and run those too, then close and reopen Terminal.
-
-Then install ffmpeg (reads the audio out of videos), Python, and git:
+`echo` and `eval`. Run those too, then close and reopen Terminal. Then:
 
 ```bash
 brew install ffmpeg python@3.12 git gh
 ```
 
-## 2. Download the code
+**2. Download the code.**
 
 ```bash
 gh auth login        # choose GitHub.com → HTTPS → "Login with a web browser"
@@ -49,28 +98,23 @@ gh repo clone fmbarrera/Video-Transcript-Generator
 cd Video-Transcript-Generator
 ```
 
-## 3. Set up Python (one time)
+**3. Set up Python.**
 
 ```bash
-/opt/homebrew/bin/python3.12 -m venv .venv
+"$(brew --prefix)/bin/python3.12" -m venv .venv
 .venv/bin/pip install -r requirements.txt
 ```
 
-## 4. Add your API key (one time)
-
-So you don't have to paste it every time, save it in your shell profile:
+**4. Save your API key.** Keep it private, as above.
 
 ```bash
 echo 'export ANTHROPIC_API_KEY=sk-ant-PASTE-YOUR-KEY-HERE' >> ~/.zshrc
 source ~/.zshrc
 ```
 
-Keep the key private. Don't put it in any file inside this folder, and don't
-share it in chat.
+## Grading a batch
 
-## 5. Add the student files
-
-Inside the `Video-Transcript-Generator` folder:
+**Add the student files** inside the `Video-Transcript-Generator` folder:
 
 - Create a folder named **`Videos`** and put the student videos in it. Each file
   name must start with the student's name as **"Last, First"** (Canvas
@@ -79,35 +123,43 @@ Inside the `Video-Transcript-Generator` folder:
 
 Git ignores both, so they can't be uploaded by accident.
 
-## 6. Grade a batch
+**Close the spreadsheet in Excel**, then run the three steps from the
+`Video-Transcript-Generator` folder:
 
-Close the spreadsheet in Excel first, then run the three steps from the
-`Video-Transcript-Generator` folder in Terminal:
+Windows (PowerShell):
+
+```powershell
+cd $HOME\Documents\Video-Transcript-Generator
+.venv\Scripts\python transcribe.py Videos          # 1. videos -> transcripts (local)
+.venv\Scripts\python grade.py                      # 2. transcripts -> grades (uses the API key)
+.venv\Scripts\python gradebook.py "Reflection 1 Grades_claude new template.xlsx" --sheet "Reflections 1"   # 3. -> spreadsheet
+```
+
+Mac (Terminal):
 
 ```bash
 cd ~/Documents/Video-Transcript-Generator
-
-# 1. Videos → transcripts (local; the first run downloads the speech model)
 .venv/bin/python transcribe.py Videos
-
-# 2. Transcripts → grades (uses the API key)
 .venv/bin/python grade.py
-
-# 3. Grades → points and student comments in the spreadsheet
 .venv/bin/python gradebook.py "Reflection 1 Grades_claude new template.xlsx" --sheet "Reflections 1"
 ```
 
-Use your spreadsheet's actual file name and tab name in step 3. Each step
-skips videos it has already done, so you can add new videos and run all three
-again. Then open the spreadsheet and review the new columns. See the README for
-what each column means and how grading works.
+Use your spreadsheet's actual file name and tab name in step 3. The first run
+of step 1 downloads the speech model, so it takes longer. Each step skips
+videos it has already done, so you can add new videos and run all three again.
+Then open the spreadsheet and review the new columns. See the README for what
+each column means and how grading works.
 
-## 7. Getting updates
+If transcription is too slow on your computer, add `--model small` to step 1.
+It's several times faster and a little less accurate.
 
-When the other TA changes the rubric or the code:
+## Getting updates
+
+When the other TA changes the rubric or the code, run this from the
+`Video-Transcript-Generator` folder (on Windows, use
+`.venv\Scripts\python -m pip` in place of `.venv/bin/pip`):
 
 ```bash
-cd ~/Documents/Video-Transcript-Generator
 git pull
 .venv/bin/pip install -r requirements.txt
 ```
@@ -119,10 +171,10 @@ step 3 again.
 
 | Message | Fix |
 |---|---|
-| `command not found: brew` | Run the "Next steps" lines Homebrew printed in step 1, then reopen Terminal |
-| `No such file or directory: ffmpeg` | `brew install ffmpeg` |
-| `authentication_error` / `API key is invalid` | Check the key in `~/.zshrc`, then `source ~/.zshrc` |
+| `'ffmpeg' is not recognized` (Windows) / `No such file or directory: ffmpeg` | Install ffmpeg (step 1), then open a **new** PowerShell / Terminal window |
+| `'py' is not recognized` (Windows) | Install Python (step 1), then open a new PowerShell window |
+| `command not found: brew` (Mac) | Run the "Next steps" lines Homebrew printed, then reopen Terminal |
+| `authentication_error` / `API key is invalid` | Re-save the key (step 4), then open a new window |
 | `no roster match for …` | Rename the video so it starts with the student's "Last, First" as it appears in the spreadsheet |
 | `Couldn't find a header row` | The tab needs a header row with `Student` in column A. Check the `--sheet` name |
 | `PermissionError` when saving the spreadsheet | Close it in Excel and run step 3 again |
-| `mlx` / `Metal` errors in step 1 | This Mac isn't Apple Silicon (see "What you need") |

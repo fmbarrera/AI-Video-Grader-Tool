@@ -10,7 +10,7 @@ gradebook. Students answer four prompts in a 3–5 minute video:
 3. What they got out of in-class experiential learning
 4. What they'll prioritize in the next phase of their venture
 
-**Setting it up on another computer?** Follow [SETUP.md](SETUP.md).
+**Setting it up on another computer (Windows or Mac)?** Follow [SETUP.md](SETUP.md).
 
 The output is a first pass for the TA to review. The TA's spreadsheet stays
 the official record.
@@ -115,7 +115,7 @@ reported as a warning, not skipped silently.
 
 | Script | What it does |
 |---|---|
-| `transcribe.py` | Video → text with Whisper (mlx-whisper, on-device) |
+| `transcribe.py` | Video → text with Whisper, on-device (mlx-whisper on Apple Silicon Macs, faster-whisper on Windows and other computers) |
 | `grade.py` | Transcript + `rubric.md` → labels, evidence, AI-script flag, and comment, from Claude |
 | `gradebook.py` | Grades + late policy → points and student comments in the gradebook |
 | `late.py` | The late policy |
