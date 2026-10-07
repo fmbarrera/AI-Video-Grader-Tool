@@ -21,20 +21,23 @@ from pydantic import BaseModel, Field
 MODEL = "claude-opus-5-5"
 MAX_POINTS = 40
 # Points taken off per prompt. Edit these to make grading stricter or more lenient.
-DEDUCTIONS = {"thoughtful": 0, "thin": 1, "missing": 2}
+DEDUCTIONS = {"thoughtful": 0, "thin": 2, "missing": 2}
 RUBRIC = Path(__file__).with_name("rubric.md")
 CRITERIA = [
     ("perception", "Change in perception"),
     ("readings", "Readings / assigned materials"),
     ("experiential", "In-class experiential learning"),
     ("next_phase", "Next-phase priorities"),
+    ("personal", "Personal & specific"),  # thoughtful = their own experience comes through; thin = generic
 ]
+AI_SCRIPT_FLAG = "Possible AI script"
 
 
 class CriterionScore(BaseModel):
     status: Literal["thoughtful", "thin", "missing"]
     evidence: str = Field(description="Short quote(s) from the transcript supporting the judgment")
-    rationale: str = Field(description="One or two sentences explaining the judgment")
+    rationale: str = Field(description="One or two sentences written to the student ('You ...'). For thin or missing, "
+                                       "say exactly what was missing so the student understands why points came off.")
 
 
 class Grade(BaseModel):
@@ -43,7 +46,11 @@ class Grade(BaseModel):
     readings: CriterionScore
     experiential: CriterionScore
     next_phase: CriterionScore
-    overall_comment: str = Field(description="2-3 sentence comment the TA could give the student")
+    personal: CriterionScore = Field(description="thoughtful if the student's own experience, interviews, or venture details come through; thin if it is a generic, polished summary that anyone could have written. Never 'missing'.")
+    possible_ai_script: bool = Field(description="True if the reflection shows strong signs of being read from an AI-written script")
+    ai_script_reason: str = Field(description="If possible_ai_script, the specific signs (quote them). Otherwise empty.")
+    overall_comment: str = Field(description="1-2 sentences to the student on what they did well, specific to their reflection. "
+                                             "Deductions are explained separately, so don't repeat them here.")
     flags: list[str] = Field(description="Anything the TA should double-check (off-topic, very short, unclear audio, etc.). Empty if none.")
 
 
@@ -79,8 +86,10 @@ def write_feedback(path: Path, source: str, minutes: float, g: Grade) -> int:
         off = DEDUCTIONS[c.status]
         lines += [f"## {label}: {c.status} ({f'-{off}' if off else 'no deduction'})", "", c.rationale, "", f"> {c.evidence}", ""]
     lines += ["## Overall", "", g.overall_comment, ""]
-    if g.flags:
-        lines += ["## Check", ""] + [f"- {f}" for f in g.flags] + [""]
+    flags = ([f"{AI_SCRIPT_FLAG} (not deducted; watch the video to confirm): {g.ai_script_reason}"]
+             if g.possible_ai_script else []) + g.flags
+    if flags:
+        lines += ["## Check", ""] + [f"- {f}" for f in flags] + [""]
     path.write_text("\n".join(lines))
     return total
 
@@ -137,6 +146,8 @@ def read_feedback(md: Path) -> dict:
         "statuses": statuses,
         "comment": section("Overall"),
         "flags": [line[2:] for line in section("Check").splitlines() if line.startswith("- ")],
+        "deductions": [(label, int(off), section(re.escape(f"{label}: {status} (-{off})")).split("\n\n")[0])
+                       for label, status, off in re.findall(r"^## (.*): (thin|missing) \(-(\d+)\)$", text, re.M)],
     }
 
 

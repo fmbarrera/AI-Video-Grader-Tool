@@ -10,23 +10,35 @@ gradebook. Students answer four prompts in a 3–5 minute video:
 3. What they got out of in-class experiential learning
 4. What they'll prioritize in the next phase of their venture
 
+**Setting it up on another computer?** Follow [SETUP.md](SETUP.md).
+
 The output is a first pass for the TA to review. The TA's spreadsheet stays
 the official record.
 
 ## How grading works
 
-Every reflection starts at **40 points**. Each of the four prompts gets one label:
+Every reflection starts at **40 points**. The professor's target is a class
+average of about 88% among students who submitted. Each reflection gets five
+checks, the four prompts plus one for authenticity:
+
+1. **Change in perception**: what they used to think vs. now
+2. **Specific takeaway**: from a reading, case, framework, or class session that
+   can be identified (course ideas with no source don't count)
+3. **Experiential learning**: an in-class activity, interview, or speaker, and what it taught them
+4. **Next-phase priority for their venture**: a general mindset doesn't count
+5. **Personal & specific**: their own interviews, venture, or background come through,
+   rather than a polished generic summary
 
 | Label | Meaning | Points off | In the spreadsheet |
 |---|---|---|---|
-| **Thoughtful** | Engages with it in their own words | 0 | 3 |
-| **Thin** | Touched on, but vague or only implied | −1 | 2 |
-| **Missing** | Not answered | −2 | 1 |
+| **Thoughtful** | Clearly meets the check | 0 | 3 |
+| **Thin** | Vague, generic, or only implied | −2 | 1 |
+| **Missing** | Not addressed | −2 | 1 |
 
-So Points = 40 minus what the four prompt columns fall short of 3. The bar is
-deliberately generous: most honest reflections earn full marks. Delivery
-(filler words, volume) goes into the comment as coaching, not into the score.
-Length outside 3–5 minutes is flagged but not penalized.
+**Possible AI script** is flagged for the TA to confirm by watching the video
+(eyes reading a screen, flat delivery). It is never deducted automatically.
+Delivery (filler words, volume) goes into the comment as coaching, not into
+the score. Length outside 3–5 minutes is flagged but not penalized.
 
 The point values live in `DEDUCTIONS` at the top of `grade.py`. What counts as
 thoughtful / thin / missing lives in `rubric.md`, along with anonymized
@@ -55,9 +67,9 @@ Run `.venv/bin/python late.py` to see examples. Change `LATE_CAP_PCT` or
 export ANTHROPIC_API_KEY=sk-ant-...
 .venv/bin/python grade.py
 
-# 3. Merge AI grades + late policy into a copy of the gradebook
-#    (close the review copy in Excel first; this overwrites it)
-.venv/bin/python gradebook.py "Reflection 1 Grades_claude.xlsx"
+# 3. Write Claude's points and student comments into the gradebook
+#    (close it in Excel first)
+.venv/bin/python gradebook.py "Reflection 1 Grades_claude new template.xlsx" --sheet "Reflections 1"
 ```
 
 Each step skips work it has already done, so re-running only handles new
@@ -70,14 +82,21 @@ uploads. Use `--force` with steps 1 and 2 to redo everything.
   comment for the student (praise first, then one or two things to improve),
   and anything the TA should double-check
 - `grades/grades.csv`: one row per student
-- `<gradebook> - AI review.xlsx`: a copy of the TA's spreadsheet with extra
-  columns to the right: AI score per prompt (same 3 / 2 / 1 scale), AI points,
-  days late, late deduction, final points, what the final is based on, where
-  the TA and the AI disagree, and AI notes. Blank Length cells are filled in
-  from the video. Nothing else in the TA's columns is changed.
+- **The gradebook itself** (the sheet named with `--sheet`): five columns are
+  added to the right of the TA's columns. Re-running updates them in place.
+  - **Claude Points**: 40 minus 2 for each thin or missing check
+  - **Late Policy**: points removed by the 80% cap, if late
+  - **Final Points**: Claude's points after the late policy; the grader's
+    points when there's no video; 0 if not submitted
+  - **Comment for Student**: written so students understand why they didn't
+    get full marks: each deduction with its reason, then what they did well
+  - **TA Notes (not for students)**: possible AI script, length, transcript
+    glitches, and where Claude differs from the grader's points
 
-**Final points** use the TA's Points when they're filled in, otherwise the
-AI's. Students marked "NOT Submitted" get 0.
+  The TA's own columns are never changed. Before the first run, a copy is
+  saved as `<name> (before Claude).xlsx`. The sheet needs a header row with
+  `Student` in column A and columns named `Graded by`, `Grader's Assigned
+  Points` and `Date Submitted`.
 
 ### Matching videos to students
 
@@ -90,15 +109,15 @@ reported as a warning, not skipped silently.
 
 | Thing | Where | In git? |
 |---|---|---|
-| **Gradebook spreadsheet** (`.xlsx`): student roster, submission dates, length, the TA's grade for each prompt (3 / 2 / 1), Points out of 40, and comments | Project folder, kept by the TA | **No**: all spreadsheets are git-ignored because they contain student names and grades |
+| **Gradebook spreadsheet** (`.xlsx`): student roster, submission dates, length, the TA's grade for each prompt (3 = full credit), Points out of 40, and comments | Project folder, kept by the TA | **No**: all spreadsheets are git-ignored because they contain student names and grades |
 | **Grading rubric**: what counts as thoughtful / thin / missing, with anonymized calibration examples | `rubric.md` | Yes |
 | **Student videos, transcripts, AI feedback** | `Videos/`, `transcripts/`, `grades/` | No |
 
 | Script | What it does |
 |---|---|
 | `transcribe.py` | Video → text with Whisper (mlx-whisper, on-device) |
-| `grade.py` | Transcript + `rubric.md` → labels, evidence, and comment, from Claude |
-| `gradebook.py` | AI grades + late policy → review copy of the gradebook |
+| `grade.py` | Transcript + `rubric.md` → labels, evidence, AI-script flag, and comment, from Claude |
+| `gradebook.py` | Grades + late policy → points and student comments in the gradebook |
 | `late.py` | The late policy |
 
 ## Keeping the AI in line with the TAs
@@ -107,7 +126,7 @@ When a TA disagrees with a grade, add that case to the calibration examples in
 `rubric.md`. Say which prompts were thoughtful, thin, or missing and why, and
 use "Student E", "Student F", and so on instead of names. Worked examples
 change the AI's judgment far more reliably than rewording the rules. Then run
-`grade.py --force` and check the "TA vs AI" column.
+`grade.py --force` and check the TA Notes column.
 
 ## Known quirks
 
@@ -118,7 +137,9 @@ change the AI's judgment far more reliably than rewording the rules. Then run
 - **The AI only sees the transcript.** It can't judge tone, volume, or
   confidence, and Whisper drops many "ums".
 
-## One-time setup (already done on this machine)
+## One-time setup
+
+Full walkthrough for a new computer: [SETUP.md](SETUP.md). Short version:
 
 ```bash
 brew install ffmpeg

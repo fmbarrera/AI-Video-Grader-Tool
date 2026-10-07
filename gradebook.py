@@ -1,36 +1,51 @@
-"""Merge AI feedback and the late policy into the TA's gradebook spreadsheet.
+"""Write Claude's points and student-facing comments into the TA's gradebook.
 
 Usage:
-    .venv/bin/python gradebook.py "Reflection 1 Grades_claude.xlsx" [--grades grades]
+    .venv/bin/python gradebook.py "Reflection 1 Grades_claude new template.xlsx" [--sheet "Reflections 1"]
 
-Reads the roster (header row starting with "Name"), matches each grades/<video>.md
-to a student by the "Last, First" prefix of the video file name, and writes a copy
-of the workbook named "<original> - AI review.xlsx" with extra columns to the right.
-The TA's own columns are never changed, except that blank Length cells are filled
-in from the video duration.
+Close the workbook in Excel first. The sheet needs a header row with "Student" (or
+"Name") in column A, plus "Graded by", "Grader's Assigned Points", and "Date Submitted".
+The script matches each grades/<video>.md to a student by the "Last, First" start of the
+video file name and fills these columns to the right of the TA's (re-running updates them):
 
-Prompt columns use the TA's scale: 3 = thoughtful, 2 = thin (-1), 1 = missing (-2), so Points = 40 minus what the four columns fall short of 3.
+  Claude Points             40 minus 2 for each thin / missing check
+  Late Policy               points removed by the 80% late cap, if any
+  Final Points              Claude's points after the late policy; the grader's points if
+                            there's no video; 0 if not submitted
+  Comment for Student       why points came off, then what they did well
+  TA Notes                  for the TA only: possible AI script, length, transcript glitches,
+                            and where Claude differs from the grader
+
+The TA's own columns are never changed. A copy of the workbook from before the first
+run is saved as "<name> (before Claude).xlsx".
 """
 import argparse
 import re
+import shutil
 import sys
 import unicodedata
 from datetime import datetime, time
 from pathlib import Path
 
 import openpyxl
-from openpyxl.styles import Font, PatternFill
+from openpyxl.styles import Alignment, Font, PatternFill
 
-from grade import CRITERIA, DEDUCTIONS, read_feedback
-from late import apply_late_policy, days_late
+from grade import MAX_POINTS, read_feedback
+from late import LATE_CAP_PCT, days_late
 
-PROMPT_SCALE = 3  # what the TA enters for full credit on a prompt
-NEW_COLUMNS = [
-    "AI: perception", "AI: readings", "AI: experiential", "AI: next phase",
-    "AI points", "Days late", "Late deduction", "Final points", "Final based on",
-    "TA vs AI", "AI notes",
-]
-AI_FILL = PatternFill("solid", fgColor="EAF1FB")
+COLUMNS = {  # header -> width
+    "Claude Points": 12, "Late Policy": 11, "Final Points": 11,
+    "Comment for Student": 80, "TA Notes (not for students)": 55,
+}
+STUDENT_LABELS = {
+    "Change in perception": "Change in perception",
+    "Readings / assigned materials": "Specific takeaway from readings / class material",
+    "In-class experiential learning": "In-class experiential learning",
+    "Next-phase priorities": "Next-phase priority for your venture",
+    "Personal & specific": "Personal & specific reflection",
+}
+HEADER_FILL = PatternFill("solid", fgColor="EAF1FB")
+WRAP = Alignment(wrap_text=True, vertical="top")
 
 
 def key(name: str) -> str:
@@ -40,9 +55,9 @@ def key(name: str) -> str:
 
 def find_header(ws) -> int:
     for row in ws.iter_rows(min_col=1, max_col=1):
-        if isinstance(row[0].value, str) and row[0].value.strip() == "Name":
+        if isinstance(row[0].value, str) and row[0].value.strip() in ("Student", "Name"):
             return row[0].row
-    sys.exit("Couldn't find a header row with 'Name' in column A.")
+    sys.exit("Couldn't find a header row with 'Student' or 'Name' in column A.")
 
 
 def short_key(name: str) -> tuple[str, str]:
@@ -86,86 +101,94 @@ def as_date(value) -> datetime | None:
     return None
 
 
+def student_comment(fb: dict, final: float, late_off: float) -> str:
+    if final == MAX_POINTS:
+        return f"{final:g}/{MAX_POINTS} (full marks). {fb['comment']}"
+    lines = [f"{final:g}/{MAX_POINTS}. Points deducted:"]
+    lines += [f"\u2022 \u2212{off} {STUDENT_LABELS.get(label, label)}: {reason}" for label, off, reason in fb["deductions"]]
+    if late_off:
+        lines.append(f"\u2022 \u2212{late_off:g} Late: submitted after the Sep 24 grace period; late work is capped at "
+                     f"{MAX_POINTS * LATE_CAP_PCT / 100:g}/{MAX_POINTS}.")
+    lines.append(f"What you did well: {fb['comment']}")
+    return "\n".join(lines)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("workbook")
+    ap.add_argument("--sheet", default="Reflections 1")
     ap.add_argument("--grades", default="grades")
     args = ap.parse_args()
 
     src = Path(args.workbook)
+    backup = src.with_name(f"{src.stem} (before Claude).xlsx")
+    if not backup.exists():
+        shutil.copy2(src, backup)
     wb = openpyxl.load_workbook(src)
-    ws = wb.active
+    ws = wb[args.sheet]
     header = find_header(ws)
     cols = {str(c.value).strip(): c.column for c in ws[header] if c.value}
-    name_col, status_col, date_col, length_col, points_col = (
-        cols["Name"], cols["Graded"], cols["Date Submitted"], cols["Length"], cols["Points"])
-    prompt_cols = list(range(length_col + 1, points_col))  # the four prompt columns, in order
-    max_points = float(ws["B2"].value or 40)
+    name_col, by_col, grader_col, date_col = (
+        cols[ws.cell(header, 1).value.strip()], cols["Graded by"], cols["Grader's Assigned Points"], cols["Date Submitted"])
+
+    # Reuse our columns on a re-run; otherwise add them after a blank divider column.
+    if "Claude Points" in cols:
+        c = {h: cols["Claude Points"] + i for i, h in enumerate(COLUMNS)}
+    else:
+        c = {h: max(cols.values()) + 2 + i for i, h in enumerate(COLUMNS)}
+    for h, width in COLUMNS.items():
+        cell = ws.cell(header, c[h], h)
+        cell.font, cell.fill, cell.alignment = Font(bold=True), HEADER_FILL, WRAP
+        ws.column_dimensions[cell.column_letter].width = width
 
     rows = {key(ws.cell(r, name_col).value): r
             for r in range(header + 1, ws.max_row + 1) if ws.cell(r, name_col).value}
     names = {k: ws.cell(r, name_col).value for k, r in rows.items()}
     feedback = match_feedback(Path(args.grades), list(rows), names)
 
-    first = ws.max_column + 2  # leave one blank column as a divider
-    for i, title in enumerate(NEW_COLUMNS):
-        cell = ws.cell(header, first + i, title)
-        cell.font, cell.fill = Font(bold=True), AI_FILL
-        ws.column_dimensions[cell.column_letter].width = 60 if title == "AI notes" else 14
-    c = {title: first + i for i, title in enumerate(NEW_COLUMNS)}
-
-    counts = {"ai": 0, "ta": 0, "ai_only": 0, "late": 0}
+    finals = []
     for k, r in rows.items():
-        status = ws.cell(r, status_col).value
-        if isinstance(status, str) and "not submitted" in status.lower():
-            ws.cell(r, c["Final points"], 0)
-            ws.cell(r, c["Final based on"], "not submitted")
+        for h in COLUMNS:
+            ws.cell(r, c[h]).value = None
+            ws.cell(r, c[h]).alignment = WRAP
+        by, grader = ws.cell(r, by_col).value, ws.cell(r, grader_col).value
+        grader = grader if isinstance(grader, (int, float)) else None
+        if isinstance(by, str) and "not submitted" in by.lower():
+            ws.cell(r, c["Final Points"], 0)
+            ws.cell(r, c["Comment for Student"], "Not submitted.")
             continue
-
-        ai_points = ai_scores = None
-        if k in feedback:
-            fb = read_feedback(feedback[k])
-            ai_scores = [PROMPT_SCALE - DEDUCTIONS[fb["statuses"][key_]] for key_, _ in CRITERIA]
-            ai_points = max_points - sum(DEDUCTIONS[fb["statuses"][key_]] for key_, _ in CRITERIA)
-            for col, score in zip([c[t] for t in NEW_COLUMNS[:4]], ai_scores):
-                ws.cell(r, col, score)
-            ws.cell(r, c["AI points"], ai_points)
-            ws.cell(r, c["AI notes"], " | ".join(filter(None, [fb["comment"], *fb["flags"]])))
-            if ws.cell(r, length_col).value is None:
-                ws.cell(r, length_col, fb["minutes"])
-            counts["ai"] += 1
-
-        ta_points = ws.cell(r, points_col).value
-        ta_scores = [ws.cell(r, col).value for col in prompt_cols]
-        if ai_scores and all(isinstance(s, (int, float)) for s in ta_scores):
-            diffs = [f"{label}: TA {t}, AI {a}" for (_, label), t, a in zip(CRITERIA, ta_scores, ai_scores) if t != a]
-            ws.cell(r, c["TA vs AI"], "; ".join(diffs) or "agree")
-
-        base, basis = (ta_points, "TA") if isinstance(ta_points, (int, float)) else (ai_points, "AI (not yet TA-graded)")
-        if base is None:
-            continue
-        counts["ta" if basis == "TA" else "ai_only"] += 1
 
         submitted = as_date(ws.cell(r, date_col).value)
-        late_days = deduction = 0
-        if submitted:
-            # Dates in the sheet have no time; count them as end of that day.
-            submitted = datetime.combine(submitted.date(), time(23, 59))
-            late_days = days_late(submitted)
-            deduction = round(base - apply_late_policy(base, max_points, submitted), 2)
-            counts["late"] += late_days > 0
+        late = submitted and days_late(datetime.combine(submitted.date(), time(23, 59))) > 0
+        notes = []
+        if k in feedback:
+            fb = read_feedback(feedback[k])
+            points = fb["total"]
+            final = min(points, MAX_POINTS * LATE_CAP_PCT / 100) if late else points
+            late_off = points - final
+            ws.cell(r, c["Claude Points"], points)
+            ws.cell(r, c["Late Policy"], -late_off if late_off else None)
+            ws.cell(r, c["Comment for Student"], student_comment(fb, final, late_off))
+            if grader is not None and grader != final:
+                notes.append(f"Grader gave {grader:g}; Claude gives {final:g}.")
+            notes += fb["flags"]
+            if not submitted:
+                notes.append("No submission date, so the late policy wasn't checked.")
+        elif grader is not None:
+            final = grader
+            notes.append("No video found here; Final Points uses the grader's points.")
         else:
-            basis += ", no submit date"
-        ws.cell(r, c["Days late"], late_days)
-        ws.cell(r, c["Late deduction"], -deduction if deduction else 0)
-        ws.cell(r, c["Final points"], max(0, base - deduction))
-        ws.cell(r, c["Final based on"], basis)
+            continue
+        ws.cell(r, c["Final Points"], final)
+        ws.cell(r, c["TA Notes (not for students)"], "\n".join(f"\u2022 {n}" for n in notes) or None)
+        finals.append(final)
 
-    out = src.with_name(f"{src.stem} - AI review.xlsx")
-    wb.save(out)
-    print(f"Wrote {out}")
-    print(f"  {counts['ai']} students with AI feedback, {counts['ta']} with TA points, "
-          f"{counts['ai_only']} using AI points until TA grades, {counts['late']} late")
+    wb.save(src)
+    print(f"Updated '{args.sheet}' in {src} (original saved as {backup.name})")
+    if finals:
+        avg = sum(finals) / len(finals)
+        print(f"  {len(feedback)} graded by Claude; class average of {len(finals)} submissions: "
+              f"{avg:.2f}/{MAX_POINTS} = {avg / MAX_POINTS:.1%}")
 
 
 if __name__ == "__main__":
