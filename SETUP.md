@@ -152,8 +152,10 @@ source ~/.zshrc
 **Add the student files** inside the `Video-Transcript-Generator` folder:
 
 - Create a folder named **`Videos`** and put the student videos in it. Each file
-  name must start with the student's name as **"Last, First"** (Canvas
-  downloads already do this), e.g. `Doe, Jane Movie on 9-19-26.mov`.
+  name must start with the student's name, either as **"Last, First"**
+  (e.g. `Doe, Jane Movie on 9-19-26.mov`) or as Canvas's bulk download names
+  it, last and first name joined (e.g. `doejane_123456_7890123_reflection.mov`).
+  Canvas downloads already do one or the other.
 - Put the **gradebook spreadsheet** (`.xlsx`) directly in the folder.
 
 Git ignores both, so they can't be uploaded by accident.
@@ -229,6 +231,6 @@ run step 3 again.
 | `'py' is not recognized` (Windows) | Install Python (step 1), then open a new PowerShell window |
 | `command not found: brew` (Mac) | Run the "Next steps" lines Homebrew printed, then reopen Terminal |
 | `authentication_error` / `API key is invalid` | Option B: re-save the key (step 4), then open a new window. Or use Option A |
-| `no roster match for …` | Rename the video so it starts with the student's "Last, First" as it appears in the spreadsheet |
+| `no roster match for …` | Rename the video so it starts with the student's "Last, First" (or `lastfirst_`) as it appears in the spreadsheet |
 | `Couldn't find a header row` | The tab needs a header row with `Student` in column A. Check the `--sheet` name |
 | `PermissionError` when saving the spreadsheet | Close it in Excel and run step 3 again |
