@@ -22,8 +22,8 @@ average of about 88% among students who submitted. Each reflection gets five
 checks, the four prompts plus one for authenticity:
 
 1. **Change in perception**: what they used to think vs. now
-2. **Specific takeaway**: from a reading, case, framework, or class session that
-   can be identified (course ideas with no source don't count)
+2. **Specific takeaway**: from a reading, case, framework, or class session,
+   connected to their own venture, interviews, or experience
 3. **Experiential learning**: an in-class activity, interview, or speaker, and what it taught them
 4. **Next-phase priority for their venture**: a general mindset doesn't count
 5. **Personal & specific**: their own interviews, venture, or background come through,
@@ -32,11 +32,12 @@ checks, the four prompts plus one for authenticity:
 | Label | Meaning | Points off | In the spreadsheet |
 |---|---|---|---|
 | **Thoughtful** | Clearly meets the check | 0 | 3 |
-| **Thin** | Vague, generic, or only implied | −2 | 1 |
-| **Missing** | Not addressed | −2 | 1 |
+| **Thin** | Vague, generic, or only implied | −4 | 1 |
+| **Missing** | Not addressed | −5 | 1 |
 
 **Possible AI script** is flagged for the TA to confirm by watching the video
-(eyes reading a screen, flat delivery). It is never deducted automatically.
+(eyes reading a screen, flat delivery). It is never deducted automatically;
+if the TA confirms it, they enter the deduction in the **TA Adjustment** column.
 Delivery (filler words, volume) goes into the comment as coaching, not into
 the score. Length outside 3–5 minutes is flagged but not penalized.
 
@@ -60,7 +61,7 @@ Run `.venv/bin/python late.py` to see examples. Change `LATE_CAP_PCT` or
 
 ```bash
 # 1. Download the videos into Videos/. File names must start with "Last, First"
-#    (as Canvas does). Transcribe them; this runs locally, audio never leaves the Mac.
+#    or Canvas's "lastfirst_..." (e.g. doejane_123456_7890123_reflection.mov). Transcribe them; this runs locally, audio never leaves the Mac.
 .venv/bin/python transcribe.py Videos
 
 # 2. Judge the transcripts with Claude: with an API key, or by pasting the
@@ -85,14 +86,23 @@ uploads. Use `--force` with steps 1 and 2 to redo everything.
 - `grades/grades.csv`: one row per student
 - **The gradebook itself** (the sheet named with `--sheet`): five columns are
   added to the right of the TA's columns. Re-running updates them in place.
-  - **Claude Points**: 40 minus 2 for each thin or missing check
+  - **Claude Points**: 40 minus 4 for each thin check and 5 for each missing one
   - **Late Policy**: points removed by the 80% cap, if late
-  - **Final Points**: Claude's points after the late policy; the grader's
-    points when there's no video; 0 if not submitted
-  - **Comment for Student**: written so students understand why they didn't
-    get full marks: each deduction with its reason, then what they did well
+  - **Final Points**: Claude's points plus any TA Adjustment, after the late
+    policy; the grader's points when there's no video; 0 if not submitted
+  - **Comment for Student**: what they did well, then where any points went
+    and why, written in a TA's voice
   - **TA Notes (not for students)**: possible AI script, length, transcript
     glitches, and where Claude differs from the grader's points
+  - **Personal Comment for Student**: a warmer note by first name: what they
+    did well, then concrete feedback on what to talk about in the next
+    reflection (no point breakdown)
+
+  Two more columns at the far right are for the TA and are never overwritten:
+  - **TA Adjustment**: points to add or remove after watching the video,
+    e.g. `-4` for a confirmed AI-written script. Re-run step 3 to apply it.
+  - **Adjustment Reason (for student)**: why, in words for the student. It
+    appears in the comment with the other deductions.
 
   The TA's own columns are never changed. Before the first run, a copy is
   saved as `<name> (before Claude).xlsx`. The sheet needs a header row with

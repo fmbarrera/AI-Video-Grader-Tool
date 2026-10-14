@@ -21,7 +21,7 @@ from pydantic import BaseModel, Field
 MODEL = "claude-opus-5-5"
 MAX_POINTS = 40
 # Points taken off per prompt. Edit these to make grading stricter or more lenient.
-DEDUCTIONS = {"thoughtful": 0, "thin": 2, "missing": 2}
+DEDUCTIONS = {"thoughtful": 0, "thin": 4, "missing": 5}
 RUBRIC = Path(__file__).with_name("rubric.md")
 CRITERIA = [
     ("perception", "Change in perception"),
@@ -51,6 +51,11 @@ class Grade(BaseModel):
     ai_script_reason: str = Field(description="If possible_ai_script, the specific signs (quote them). Otherwise empty.")
     overall_comment: str = Field(description="1-2 sentences to the student on what they did well, specific to their reflection. "
                                              "Deductions are explained separately, so don't repeat them here.")
+    personal_comment: str = Field(default="", description="A short note to the student by first name, in a TA's voice: "
+                                  "first what they did well, with one specific detail from their video, then concrete "
+                                  "feedback on what to talk about in the next reflection (cover any thin or missing "
+                                  "check here as advice, not as a deduction; for a thin or missing next "
+                                  "phase, ask for a concrete next step framed as a SMART goal, with an example).")
     flags: list[str] = Field(description="Anything the TA should double-check (off-topic, very short, unclear audio, etc.). Empty if none.")
 
 
@@ -86,6 +91,8 @@ def write_feedback(path: Path, source: str, minutes: float, g: Grade) -> int:
         off = DEDUCTIONS[c.status]
         lines += [f"## {label}: {c.status} ({f'-{off}' if off else 'no deduction'})", "", c.rationale, "", f"> {c.evidence}", ""]
     lines += ["## Overall", "", g.overall_comment, ""]
+    if g.personal_comment:
+        lines += ["## Personal Comment", "", g.personal_comment, ""]
     flags = ([f"{AI_SCRIPT_FLAG} (not deducted; watch the video to confirm): {g.ai_script_reason}"]
              if g.possible_ai_script else []) + g.flags
     if flags:
@@ -145,6 +152,8 @@ def read_feedback(md: Path) -> dict:
         "minutes": float(re.search(r"\(([\d.]+) min\)", text).group(1)),
         "statuses": statuses,
         "comment": section("Overall"),
+        "personal_comment": section("Personal Comment"),
+        "new_style_comment": section("New-Style Comment"),
         "flags": [line[2:] for line in section("Check").splitlines() if line.startswith("- ")],
         "deductions": [(label, int(off), section(re.escape(f"{label}: {status} (-{off})")).split("\n\n")[0])
                        for label, status, off in re.findall(r"^## (.*): (thin|missing) \(-(\d+)\)$", text, re.M)],
