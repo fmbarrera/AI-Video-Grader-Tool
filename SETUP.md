@@ -83,8 +83,8 @@ winget install --id GitHub.cli -e
 ```powershell
 gh auth login        # choose GitHub.com → HTTPS → "Login with a web browser"
 cd $HOME\Documents
-gh repo clone fmbarrera/Video-Transcript-Generator
-cd Video-Transcript-Generator
+gh repo clone fmbarrera/AI-Video-Grader-Tool
+cd AI-Video-Grader-Tool
 ```
 
 **3. Set up Python.**
@@ -129,8 +129,8 @@ brew install ffmpeg python@3.12 git gh
 ```bash
 gh auth login        # choose GitHub.com → HTTPS → "Login with a web browser"
 cd ~/Documents
-gh repo clone fmbarrera/Video-Transcript-Generator
-cd Video-Transcript-Generator
+gh repo clone fmbarrera/AI-Video-Grader-Tool
+cd AI-Video-Grader-Tool
 ```
 
 **3. Set up Python.**
@@ -149,7 +149,7 @@ source ~/.zshrc
 
 ## Grading a batch
 
-**Add the student files** inside the `Video-Transcript-Generator` folder:
+**Add the student files** inside the `AI-Video-Grader-Tool` folder:
 
 - Create a folder named **`Videos`** and put the student videos in it. Each file
   name must start with the student's name, either as **"Last, First"**
@@ -161,12 +161,12 @@ source ~/.zshrc
 Git ignores both, so they can't be uploaded by accident.
 
 **Close the spreadsheet in Excel**, then run the three steps from the
-`Video-Transcript-Generator` folder:
+`AI-Video-Grader-Tool` folder:
 
 Windows (PowerShell):
 
 ```powershell
-cd $HOME\Documents\Video-Transcript-Generator
+cd $HOME\Documents\AI-Video-Grader-Tool
 .venv\Scripts\python transcribe.py Videos          # 1. videos -> transcripts (local)
 .venv\Scripts\python grade.py                      # 2. transcripts -> grades (Option B; see below for Option A)
 .venv\Scripts\python gradebook.py "Reflection 1 Grades_claude new template.xlsx" --sheet "Reflections 1"   # 3. -> spreadsheet
@@ -175,7 +175,7 @@ cd $HOME\Documents\Video-Transcript-Generator
 Mac (Terminal):
 
 ```bash
-cd ~/Documents/Video-Transcript-Generator
+cd ~/Documents/AI-Video-Grader-Tool
 .venv/bin/python transcribe.py Videos
 .venv/bin/python grade.py
 .venv/bin/python gradebook.py "Reflection 1 Grades_claude new template.xlsx" --sheet "Reflections 1"
@@ -184,7 +184,7 @@ cd ~/Documents/Video-Transcript-Generator
 Use your spreadsheet's actual file name and tab name in step 3.
 
 **Step 2 with Option A (Claude Code):** skip the `grade.py` line. After step 1,
-open Claude Code in the `Video-Transcript-Generator` folder (`cd` into it and
+open Claude Code in the `AI-Video-Grader-Tool` folder (`cd` into it and
 type `claude`), paste the prompt below, and approve the steps it asks to run.
 Then run step 3 as usual.
 
@@ -211,7 +211,7 @@ It's several times faster and a little less accurate.
 ## Getting updates
 
 When the other TA changes the rubric or the code, run this from the
-`Video-Transcript-Generator` folder (on Windows, use
+`AI-Video-Grader-Tool` folder (on Windows, use
 `.venv\Scripts\python -m pip` in place of `.venv/bin/pip`):
 
 ```bash
